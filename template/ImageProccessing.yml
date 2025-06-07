@@ -9,13 +9,24 @@ Parameters:
 Resources:
 
   # 1. S3 Bucket for Image Uploads
-  ImageBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref BucketName
-      AccessControl: Private
-      VersioningConfiguration:
-        Status: Enabled
+  # 1. S3 Bucket for Image Uploads
+ImageBucket:
+  Type: AWS::S3::Bucket
+  Properties:
+    BucketName: !Ref BucketName
+    AccessControl: Private
+    VersioningConfiguration:
+      Status: Enabled
+    NotificationConfiguration:
+      LambdaConfigurations:
+        - Event: s3:ObjectCreated:*
+          Filter:
+            S3Key:
+              Rules:
+                - Name: prefix
+                  Value: uploads/
+          Function: !GetAtt ImageProcessor.Arn
+
 
   # 2. Pillow Layer S3 Bucket (if needed separately)
   PillowLayerS3Bucket:
@@ -151,19 +162,7 @@ Resources:
                   }
 
   # 7. S3 Notification Configuration
-  S3BucketNotification:
-    Type: AWS::S3::BucketNotification
-    Properties:
-      Bucket: !Ref ImageBucket
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-            Function: !GetAtt ImageProcessor.Arn
+  
 
   # 8. API Gateway
   ImageAPI:
