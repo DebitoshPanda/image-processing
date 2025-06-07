@@ -6,10 +6,20 @@ Parameters:
     Type: String
     Default: image-upload-bucket-debitosh
 
+  CreateBucket:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: "Set to true if CloudFormation should create the S3 bucket"
+
+Conditions:
+  ShouldCreateBucket: !Equals [ !Ref CreateBucket, "true" ]
+
 Resources:
 
-  # 1. S3 Bucket for Image Uploads
+  # 1. S3 Bucket for Image Uploads (conditionally created)
   ImageBucket:
+    Condition: ShouldCreateBucket
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref BucketName
@@ -26,13 +36,7 @@ Resources:
                     Value: uploads/
             Function: !GetAtt ImageProcessor.Arn
 
-  # 2. Pillow Layer S3 Bucket (optional backup/storage)
-  PillowLayerS3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: image-upload-bucket-debitosh
-
-  # 3. IAM Role for API Gateway Logging
+  # 2. IAM Role for API Gateway Logging
   APIGatewayCloudWatchRole:
     Type: AWS::IAM::Role
     Properties:
@@ -46,13 +50,13 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
 
-  # 4. Link Role to API Gateway Account
+  # 3. Link Role to API Gateway Account
   ApiGatewayAccount:
     Type: AWS::ApiGateway::Account
     Properties:
       CloudWatchRoleArn: !GetAtt APIGatewayCloudWatchRole.Arn
 
-  # 5. Lambda Execution Role
+  # 4. Lambda Execution Role
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -80,7 +84,7 @@ Resources:
                   - logs:PutLogEvents
                 Resource: "*"
 
-  # 6. Lambda Function for Image Processing
+  # 5. Lambda Function for Image Processing
   ImageProcessor:
     Type: AWS::Lambda::Function
     Properties:
@@ -159,14 +163,14 @@ Resources:
                       'body': json.dumps({'error': str(e)})
                   }
 
-  # 7. API Gateway
+  # 6. API Gateway
   ImageAPI:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Name: ImageProcessingAPI
       Description: API for image transformations
 
-  # 8. API Resource
+  # 7. API Resource
   ApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -174,7 +178,7 @@ Resources:
       ParentId: !GetAtt ImageAPI.RootResourceId
       PathPart: process
 
-  # 9. API Method (POST)
+  # 8. API Method (POST)
   ApiMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -194,7 +198,7 @@ Resources:
           ResponseModels:
             application/json: "Empty"
 
-  # 10. API Deployment
+  # 9. API Deployment
   ApiDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn: ApiMethod
@@ -202,7 +206,7 @@ Resources:
       RestApiId: !Ref ImageAPI
       StageName: prod
 
-  # 11. Lambda Permission for API Gateway
+  # 10. Lambda Permission for API Gateway
   LambdaApiPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -211,7 +215,7 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ImageAPI}/*/POST/process"
 
-  # 12. S3 Trigger Permission
+  # 11. S3 Trigger Permission
   S3TriggerPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -227,4 +231,4 @@ Outputs:
 
   S3BucketName:
     Description: Upload bucket name
-    Value: !Ref ImageBucket
+    Value: !Ref BucketName
