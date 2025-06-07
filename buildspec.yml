@@ -1,22 +1,21 @@
 version: 0.2
 
-env:
-  variables:
-    S3_BUCKET: image-upload-bucket-debitosh
-    LAYER_KEY: lambda-layers/pillow-layer.zip
-
 phases:
   install:
     runtime-versions:
       python: 3.9
-
   build:
     commands:
-      - echo "Uploading Pillow Layer to S3..."
-      - aws s3 cp layers/pillow-layer.zip s3://$S3_BUCKET/$LAYER_KEY
+      - echo "Listing files..."
+      - ls -R
+      - echo "Validating CloudFormation template..."
+      - aws cloudformation validate-template --template-body file://template/ImageProccessing.yml
       - echo "Deploying CloudFormation stack..."
-      - aws cloudformation deploy --template-file template/ImageProccessing.yml --stack-name image-processing-stack --capabilities CAPABILITY_NAMED_IAM
-
+      - aws cloudformation deploy \
+          --template-file template/ImageProccessing.yml \
+          --stack-name image-processing-stack \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides BucketName=image-upload-bucket-debitosh
 artifacts:
   files:
-    - template/ImageProccessing.yml
+    - '**/*'
