@@ -9,26 +9,24 @@ Parameters:
 Resources:
 
   # 1. S3 Bucket for Image Uploads
-  # 1. S3 Bucket for Image Uploads
-ImageBucket:
-  Type: AWS::S3::Bucket
-  Properties:
-    BucketName: !Ref BucketName
-    AccessControl: Private
-    VersioningConfiguration:
-      Status: Enabled
-    NotificationConfiguration:
-      LambdaConfigurations:
-        - Event: s3:ObjectCreated:*
-          Filter:
-            S3Key:
-              Rules:
-                - Name: prefix
-                  Value: uploads/
-          Function: !GetAtt ImageProcessor.Arn
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+            Function: !GetAtt ImageProcessor.Arn
 
-
-  # 2. Pillow Layer S3 Bucket (if needed separately)
+  # 2. Pillow Layer S3 Bucket (optional backup/storage)
   PillowLayerS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -161,17 +159,14 @@ ImageBucket:
                       'body': json.dumps({'error': str(e)})
                   }
 
-  # 7. S3 Notification Configuration
-  
-
-  # 8. API Gateway
+  # 7. API Gateway
   ImageAPI:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Name: ImageProcessingAPI
       Description: API for image transformations
 
-  # 9. API Resource
+  # 8. API Resource
   ApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -179,7 +174,7 @@ ImageBucket:
       ParentId: !GetAtt ImageAPI.RootResourceId
       PathPart: process
 
-  # 10. API Method (POST)
+  # 9. API Method (POST)
   ApiMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -199,7 +194,7 @@ ImageBucket:
           ResponseModels:
             application/json: "Empty"
 
-  # 11. API Deployment
+  # 10. API Deployment
   ApiDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn: ApiMethod
@@ -207,7 +202,7 @@ ImageBucket:
       RestApiId: !Ref ImageAPI
       StageName: prod
 
-  # 12. Lambda Permission for API Gateway
+  # 11. Lambda Permission for API Gateway
   LambdaApiPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -216,7 +211,7 @@ ImageBucket:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ImageAPI}/*/POST/process"
 
-  # 13. S3 Trigger Permission
+  # 12. S3 Trigger Permission
   S3TriggerPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -229,6 +224,7 @@ Outputs:
   ApiEndpoint:
     Description: API Gateway Endpoint URL
     Value: !Sub "https://${ImageAPI}.execute-api.${AWS::Region}.amazonaws.com/prod/process"
+
   S3BucketName:
     Description: Upload bucket name
     Value: !Ref ImageBucket
