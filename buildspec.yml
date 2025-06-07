@@ -15,10 +15,7 @@ phases:
       - echo "Uploading Pillow Layer to S3..."
       - aws s3 cp layers/pillow-layer.zip s3://$S3_BUCKET/$LAYER_KEY
       - echo "Deploying CloudFormation stack..."
-      - aws cloudformation deploy \
-          --template-file template/ImageProccessing.yml \
-          --stack-name image-processing-stack \
-          --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --template-file template/ImageProccessing.yml --stack-name image-processing-stack --capabilities CAPABILITY_NAMED_IAM
 
 artifacts:
   files:
